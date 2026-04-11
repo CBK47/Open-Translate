@@ -1,5 +1,5 @@
 """
-Open Translate — Local Seamless M4T v2 Backend
+translate.garden — Local Seamless M4T v2 Backend
 FastAPI + WebSocket server for real-time speech translation on Apple Silicon.
 """
 
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 # ── App setup ──────────────────────────────────────────────────────────────────
 
-app = FastAPI(title="Open Translate - Seamless M4T v2")
+app = FastAPI(title="translate.garden - Seamless M4T v2")
 
 app.add_middleware(
     CORSMiddleware,
@@ -199,6 +199,14 @@ async def health():
     }
 
 
+@app.get("/models")
+async def models():
+    return {
+        "loaded_model": MODEL_NAME,
+        "device": str(device),
+    }
+
+
 # ── WebSocket endpoint ────────────────────────────────────────────────────────
 
 @app.websocket("/ws/translate")
@@ -208,6 +216,8 @@ async def websocket_translate(ws: WebSocket):
 
     src_lang = "eng"
     tgt_lang = "spa"
+    conn_chunk_duration = CHUNK_DURATION_S
+    conn_vad_threshold = VAD_ENERGY_THRESHOLD
     audio_buffer = bytearray()
 
     try:
@@ -220,8 +230,27 @@ async def websocket_translate(ws: WebSocket):
                     config = json.loads(message["text"])
                     src_lang = config.get("src_lang", src_lang)
                     tgt_lang = config.get("target_lang", tgt_lang)
-                    logger.info(f"Config: {src_lang} → {tgt_lang}")
-                    await ws.send_json({"type": "config_ack", "src_lang": src_lang, "target_lang": tgt_lang})
+
+                    # Per-connection audio settings
+                    if "chunk_duration_s" in config:
+                        conn_chunk_duration = max(1.0, min(10.0, float(config["chunk_duration_s"])))
+                    if "vad_threshold" in config:
+                        conn_vad_threshold = max(0.001, min(0.5, float(config["vad_threshold"])))
+
+                    # Model change warning
+                    req_model = config.get("model_name", MODEL_NAME)
+                    if req_model != MODEL_NAME:
+                        logger.warning(f"Client requested model '{req_model}' but '{MODEL_NAME}' is loaded. Restart server to change model.")
+
+                    logger.info(f"Config: {src_lang} → {tgt_lang} | chunk={conn_chunk_duration}s vad={conn_vad_threshold}")
+                    await ws.send_json({
+                        "type": "config_ack",
+                        "src_lang": src_lang,
+                        "target_lang": tgt_lang,
+                        "loaded_model": MODEL_NAME,
+                        "chunk_duration_s": conn_chunk_duration,
+                        "vad_threshold": conn_vad_threshold,
+                    })
                 except json.JSONDecodeError:
                     await ws.send_json({"type": "error", "message": "Invalid JSON config"})
                 continue
@@ -230,16 +259,17 @@ async def websocket_translate(ws: WebSocket):
             if "bytes" in message:
                 audio_buffer.extend(message["bytes"])
 
+                conn_chunk_samples = int(SAMPLE_RATE * conn_chunk_duration)
                 # Process when we have enough audio
-                if len(audio_buffer) >= CHUNK_SAMPLES * 2:  # 2 bytes per int16 sample
-                    chunk_bytes = bytes(audio_buffer[:CHUNK_SAMPLES * 2])
-                    audio_buffer = audio_buffer[CHUNK_SAMPLES * 2:]
+                if len(audio_buffer) >= conn_chunk_samples * 2:  # 2 bytes per int16 sample
+                    chunk_bytes = bytes(audio_buffer[:conn_chunk_samples * 2])
+                    audio_buffer = audio_buffer[conn_chunk_samples * 2:]
 
                     audio_array = pcm16_bytes_to_float32(chunk_bytes)
 
                     # VAD: skip silent / background noise chunks
                     rms = np.sqrt(np.mean(audio_array ** 2))
-                    if rms < VAD_ENERGY_THRESHOLD:
+                    if rms < conn_vad_threshold:
                         logger.debug(f"Skipping silent chunk (RMS={rms:.4f})")
                         continue
 

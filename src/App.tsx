@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
-import { Mic, MicOff, Video, VideoOff, MonitorUp, MonitorOff, Globe2, Play, Square, ChevronDown, Cloud, Server, Languages } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, MonitorUp, MonitorOff, Globe2, Play, Square, ChevronDown, Cloud, Server, Languages, Settings2, X, Eye, EyeOff } from 'lucide-react';
 
 const LANGUAGE_PAIRS = [
   { code: 'es', name: 'Spanish', flag: '\u{1F1EA}\u{1F1F8}', seamlessCode: 'spa' },
@@ -14,6 +14,50 @@ const LANGUAGE_PAIRS = [
   { code: 'ar', name: 'Arabic', flag: '\u{1F1F8}\u{1F1E6}', seamlessCode: 'arb' },
   { code: 'hi', name: 'Hindi', flag: '\u{1F1EE}\u{1F1F3}', seamlessCode: 'hin' },
 ];
+
+const MODEL_PRESETS = [
+  { id: 'facebook/seamless-m4t-v2-large', label: 'Seamless M4T v2 Large', size: '~9 GB', langs: '100+' },
+  { id: 'facebook/hf-seamless-m4t-medium', label: 'Seamless M4T Medium', size: '~4 GB', langs: '100+' },
+];
+
+const SOURCE_LANGS = [
+  { code: 'eng', name: 'English' },
+  { code: 'spa', name: 'Spanish' },
+  { code: 'fra', name: 'French' },
+  { code: 'deu', name: 'German' },
+  { code: 'cmn', name: 'Chinese (Mandarin)' },
+  { code: 'jpn', name: 'Japanese' },
+];
+
+interface AppSettings {
+  geminiApiKey: string;
+  localServerUrl: string;
+  localModelName: string;
+  chunkDurationS: number;
+  vadThreshold: number;
+  srcLang: string;
+}
+
+const DEFAULT_SETTINGS: AppSettings = {
+  geminiApiKey: '',
+  localServerUrl: 'ws://localhost:8090/ws/translate',
+  localModelName: 'facebook/seamless-m4t-v2-large',
+  chunkDurationS: 3.0,
+  vadThreshold: 0.01,
+  srcLang: 'eng',
+};
+
+function loadSettings(): AppSettings {
+  try {
+    const saved = localStorage.getItem('translate-garden-settings');
+    if (saved) return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
+  } catch {}
+  return { ...DEFAULT_SETTINGS };
+}
+
+function saveSettings(settings: AppSettings) {
+  localStorage.setItem('translate-garden-settings', JSON.stringify(settings));
+}
 
 export default function App() {
   const [isConnected, setIsConnected] = useState(false);
@@ -36,6 +80,10 @@ export default function App() {
   const [showLangDropdown, setShowLangDropdown] = useState(false);
   const [backendMode, setBackendMode] = useState<'gemini' | 'local'>('gemini');
   const [localServerStatus, setLocalServerStatus] = useState<'unknown' | 'online' | 'offline'>('unknown');
+  const [showSettings, setShowSettings] = useState(false);
+  const [settings, setSettings] = useState<AppSettings>(loadSettings);
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [customModelId, setCustomModelId] = useState('');
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -45,12 +93,21 @@ export default function App() {
   const nextPlayTimeRef = useRef<number>(0);
   const localWsRef = useRef<WebSocket | null>(null);
 
+  const updateSettings = (patch: Partial<AppSettings>) => {
+    setSettings(prev => {
+      const next = { ...prev, ...patch };
+      saveSettings(next);
+      return next;
+    });
+  };
+
   // Check local server health when in local mode
   useEffect(() => {
     if (backendMode !== 'local') return;
+    const healthUrl = settings.localServerUrl.replace('ws://', 'http://').replace('wss://', 'https://').replace('/ws/translate', '/health');
     const check = async () => {
       try {
-        const res = await fetch('http://localhost:8090/health');
+        const res = await fetch(healthUrl);
         if (res.ok) setLocalServerStatus('online');
         else setLocalServerStatus('offline');
       } catch { setLocalServerStatus('offline'); }
@@ -58,7 +115,7 @@ export default function App() {
     check();
     const interval = setInterval(check, 5000);
     return () => clearInterval(interval);
-  }, [backendMode]);
+  }, [backendMode, settings.localServerUrl]);
 
   // ── Local Seamless M4T v2 session ────────────────────────────────────────────
   const startLocalSession = async () => {
@@ -80,14 +137,17 @@ export default function App() {
         videoRef.current.srcObject = stream;
       }
 
-      const ws = new WebSocket('ws://localhost:8090/ws/translate');
+      const ws = new WebSocket(settings.localServerUrl);
       localWsRef.current = ws;
 
       ws.onopen = () => {
         setIsConnected(true);
         ws.send(JSON.stringify({
-          src_lang: 'eng',
+          src_lang: settings.srcLang,
           target_lang: selectedLang.seamlessCode,
+          model_name: settings.localModelName,
+          chunk_duration_s: settings.chunkDurationS,
+          vad_threshold: settings.vadThreshold,
         }));
 
         const source = audioContext.createMediaStreamSource(stream);
@@ -141,7 +201,7 @@ export default function App() {
       };
 
       ws.onerror = () => {
-        setErrorMsg('Could not connect to local server. Is it running on port 8090?');
+        setErrorMsg(`Could not connect to local server at ${settings.localServerUrl}`);
         stopSession();
       };
 
@@ -154,11 +214,16 @@ export default function App() {
     }
   };
 
-  // ── Gemini Cloud session (AI Studio original) ────────────────────────────────
+  // ── Gemini Cloud session ────────────────────────────────────────────────────
   const startGeminiSession = async () => {
     setErrorMsg(null);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const apiKey = settings.geminiApiKey || process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        setErrorMsg('No Gemini API key configured. Add one in Settings or set GEMINI_API_KEY env var.');
+        return;
+      }
+      const ai = new GoogleGenAI({ apiKey });
 
       const audioContext = new AudioContext({ sampleRate: 16000 });
       audioContextRef.current = audioContext;
@@ -182,7 +247,6 @@ export default function App() {
           onopen: () => {
             setIsConnected(true);
 
-            // Setup audio capture
             const audioTracks = stream.getAudioTracks();
             if (audioTracks.length > 0) {
               const source = audioContext.createMediaStreamSource(stream);
@@ -213,7 +277,6 @@ export default function App() {
               };
             }
 
-            // Setup video capture
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             const videoInterval = setInterval(() => {
@@ -230,13 +293,11 @@ export default function App() {
                   });
                 }
               }
-            }, 1000); // 1 fps
+            }, 1000);
 
-            // Store interval to clear later
             (sessionPromise as any).videoInterval = videoInterval;
           },
           onmessage: (message: LiveServerMessage) => {
-            // Handle audio output
             const base64Audio = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
             if (base64Audio && audioContextRef.current) {
               const binaryString = atob(base64Audio);
@@ -262,12 +323,10 @@ export default function App() {
               nextPlayTimeRef.current += audioBuffer.duration;
             }
 
-            // Handle interruption
             if (message.serverContent?.interrupted && audioContextRef.current) {
               nextPlayTimeRef.current = audioContextRef.current.currentTime;
             }
 
-            // Handle transcription
             const inputTranscription = message.serverContent?.inputTranscription?.text;
             if (inputTranscription) {
               setInputSubtitles(prev => prev + inputTranscription);
@@ -343,6 +402,8 @@ export default function App() {
     return () => { stopSession(); };
   }, []);
 
+  const isPresetModel = MODEL_PRESETS.some(p => p.id === settings.localModelName);
+
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-50 flex flex-col font-sans">
       <header className="px-4 md:px-6 py-3 border-b border-neutral-800 flex items-center justify-between bg-neutral-900/50 backdrop-blur-sm sticky top-0 z-10 gap-3 flex-wrap">
@@ -350,9 +411,18 @@ export default function App() {
           <div className="bg-blue-500/20 p-2 rounded-lg">
             <Globe2 className="w-5 h-5 text-blue-400" />
           </div>
-          <h1 className="text-lg font-medium tracking-tight">Open Translate</h1>
+          <h1 className="text-lg font-medium tracking-tight">translate<span className="text-emerald-400">.garden</span></h1>
         </div>
         <div className="flex items-center gap-3">
+          {/* Settings Gear */}
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            className={`p-1.5 rounded-lg transition-colors ${showSettings ? 'bg-blue-600/20 text-blue-400' : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'}`}
+            title="Settings"
+          >
+            <Settings2 className="w-4.5 h-4.5" />
+          </button>
+
           {/* Backend Toggle */}
           <div className="flex items-center bg-neutral-800/60 rounded-full p-0.5 border border-neutral-700">
             <button
@@ -427,6 +497,171 @@ export default function App() {
           </div>
         </div>
       </header>
+
+      {/* Settings Panel */}
+      {showSettings && (
+        <div className="fixed inset-0 z-50 flex justify-end" onClick={(e) => { if (e.target === e.currentTarget) setShowSettings(false); }}>
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+          <div className="relative w-full max-w-md bg-neutral-900 border-l border-neutral-800 shadow-2xl overflow-y-auto">
+            <div className="sticky top-0 bg-neutral-900/95 backdrop-blur-sm border-b border-neutral-800 px-6 py-4 flex items-center justify-between z-10">
+              <h2 className="text-lg font-semibold">Settings</h2>
+              <button onClick={() => setShowSettings(false)} className="p-1.5 rounded-lg hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-8">
+              {/* Cloud Backend */}
+              <section>
+                <h3 className="text-sm font-semibold text-neutral-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <Cloud className="w-4 h-4 text-blue-400" /> Cloud Backend
+                </h3>
+                <label className="block text-xs text-neutral-400 mb-1.5">Gemini API Key</label>
+                <div className="relative">
+                  <input
+                    type={showApiKey ? 'text' : 'password'}
+                    value={settings.geminiApiKey}
+                    onChange={(e) => updateSettings({ geminiApiKey: e.target.value })}
+                    placeholder="Falls back to GEMINI_API_KEY env var"
+                    className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-blue-500 pr-10"
+                  />
+                  <button
+                    onClick={() => setShowApiKey(!showApiKey)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300"
+                  >
+                    {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </section>
+
+              {/* Local Backend */}
+              <section>
+                <h3 className="text-sm font-semibold text-neutral-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <Server className="w-4 h-4 text-emerald-400" /> Local Backend
+                </h3>
+
+                <label className="block text-xs text-neutral-400 mb-1.5">Server URL</label>
+                <input
+                  type="text"
+                  value={settings.localServerUrl}
+                  onChange={(e) => updateSettings({ localServerUrl: e.target.value })}
+                  className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-200 focus:outline-none focus:border-emerald-500 mb-4"
+                />
+
+                <label className="block text-xs text-neutral-400 mb-1.5">Model</label>
+                <div className="space-y-2 mb-3">
+                  {MODEL_PRESETS.map((preset) => (
+                    <button
+                      key={preset.id}
+                      onClick={() => updateSettings({ localModelName: preset.id })}
+                      className={`w-full text-left px-3 py-2.5 rounded-lg border text-sm transition-all ${
+                        settings.localModelName === preset.id
+                          ? 'border-emerald-500/50 bg-emerald-500/10 text-white'
+                          : 'border-neutral-700 bg-neutral-800 text-neutral-300 hover:border-neutral-600'
+                      }`}
+                    >
+                      <div className="font-medium">{preset.label}</div>
+                      <div className="text-xs text-neutral-500 mt-0.5">{preset.size} &middot; {preset.langs} languages</div>
+                    </button>
+                  ))}
+                  {/* Custom model */}
+                  <button
+                    onClick={() => {
+                      if (!isPresetModel) return;
+                      updateSettings({ localModelName: customModelId || '' });
+                    }}
+                    className={`w-full text-left px-3 py-2.5 rounded-lg border text-sm transition-all ${
+                      !isPresetModel
+                        ? 'border-emerald-500/50 bg-emerald-500/10 text-white'
+                        : 'border-neutral-700 bg-neutral-800 text-neutral-300 hover:border-neutral-600'
+                    }`}
+                  >
+                    <div className="font-medium">Custom HuggingFace Model</div>
+                    <div className="text-xs text-neutral-500 mt-0.5">Enter any model ID from HuggingFace Hub</div>
+                  </button>
+                  {!isPresetModel && (
+                    <input
+                      type="text"
+                      value={settings.localModelName}
+                      onChange={(e) => updateSettings({ localModelName: e.target.value })}
+                      placeholder="e.g. facebook/seamless-m4t-v2-large"
+                      className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-200 focus:outline-none focus:border-emerald-500"
+                    />
+                  )}
+                </div>
+                <p className="text-xs text-neutral-500">Changing the model requires a server restart.</p>
+              </section>
+
+              {/* Audio Settings */}
+              <section>
+                <h3 className="text-sm font-semibold text-neutral-300 uppercase tracking-wider mb-3">Audio Settings</h3>
+
+                <label className="block text-xs text-neutral-400 mb-1.5">
+                  Chunk Duration: {settings.chunkDurationS.toFixed(1)}s
+                </label>
+                <input
+                  type="range"
+                  min="1"
+                  max="5"
+                  step="0.5"
+                  value={settings.chunkDurationS}
+                  onChange={(e) => updateSettings({ chunkDurationS: parseFloat(e.target.value) })}
+                  className="w-full accent-blue-500 mb-4"
+                />
+                <div className="flex justify-between text-xs text-neutral-600 -mt-3 mb-4">
+                  <span>1s (faster)</span>
+                  <span>5s (more accurate)</span>
+                </div>
+
+                <label className="block text-xs text-neutral-400 mb-1.5">
+                  VAD Threshold: {settings.vadThreshold.toFixed(3)}
+                </label>
+                <input
+                  type="range"
+                  min="0.001"
+                  max="0.1"
+                  step="0.001"
+                  value={settings.vadThreshold}
+                  onChange={(e) => updateSettings({ vadThreshold: parseFloat(e.target.value) })}
+                  className="w-full accent-blue-500 mb-1"
+                />
+                <div className="flex justify-between text-xs text-neutral-600 mb-4">
+                  <span>0.001 (sensitive)</span>
+                  <span>0.1 (ignore noise)</span>
+                </div>
+              </section>
+
+              {/* Source Language */}
+              <section>
+                <h3 className="text-sm font-semibold text-neutral-300 uppercase tracking-wider mb-3">Source Language</h3>
+                <select
+                  value={settings.srcLang}
+                  onChange={(e) => updateSettings({ srcLang: e.target.value })}
+                  className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-200 focus:outline-none focus:border-blue-500"
+                >
+                  {SOURCE_LANGS.map(l => (
+                    <option key={l.code} value={l.code}>{l.name}</option>
+                  ))}
+                </select>
+              </section>
+
+              {/* Reset */}
+              <section className="pt-4 border-t border-neutral-800">
+                <button
+                  onClick={() => {
+                    setSettings({ ...DEFAULT_SETTINGS });
+                    saveSettings(DEFAULT_SETTINGS);
+                    setCustomModelId('');
+                  }}
+                  className="text-xs text-neutral-500 hover:text-red-400 transition-colors"
+                >
+                  Reset all settings to defaults
+                </button>
+              </section>
+            </div>
+          </div>
+        </div>
+      )}
 
       <main className="flex-1 p-4 md:p-6 max-w-7xl mx-auto w-full flex flex-col gap-6">
         <div className="relative flex-1 bg-neutral-900 rounded-2xl overflow-hidden border border-neutral-800 shadow-2xl flex flex-col min-h-[400px]">

@@ -1,6 +1,6 @@
 {
-  "name": "Open Translate",
-  "description": "Real-time multilingual translation with Cloud (Gemini) and Local (Seamless M4T v2) backends. 10 languages, camera and screen share support.",
+  "name": "translate.garden",
+  "description": "Open Translation Garden \u2014 the Eden where open source collaboration breaks down language barriers. Cloud (Gemini) + Local (Seamless M4T v2) backends, 10+ languages.",
   "requestFramePermissions": [
     "camera",
     "microphone",
