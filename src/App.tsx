@@ -408,8 +408,8 @@ export default function App() {
     <div className="min-h-screen bg-neutral-950 text-neutral-50 flex flex-col font-sans">
       <header className="px-4 md:px-6 py-3 border-b border-neutral-800 flex items-center justify-between bg-neutral-900/50 backdrop-blur-sm sticky top-0 z-10 gap-3 flex-wrap">
         <div className="flex items-center gap-3">
-          <div className="bg-blue-500/20 p-2 rounded-lg">
-            <Globe2 className="w-5 h-5 text-blue-400" />
+          <div className="bg-emerald-500/20 p-2 rounded-lg">
+            <Globe2 className="w-5 h-5 text-emerald-400" />
           </div>
           <h1 className="text-lg font-medium tracking-tight">translate<span className="text-emerald-400">.garden</span></h1>
         </div>
@@ -417,7 +417,7 @@ export default function App() {
           {/* Settings Gear */}
           <button
             onClick={() => setShowSettings(!showSettings)}
-            className={`p-1.5 rounded-lg transition-colors ${showSettings ? 'bg-blue-600/20 text-blue-400' : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'}`}
+            className={`p-1.5 rounded-lg transition-colors ${showSettings ? 'bg-emerald-600/20 text-emerald-400' : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'}`}
             title="Settings"
           >
             <Settings2 className="w-4.5 h-4.5" />
@@ -461,7 +461,7 @@ export default function App() {
               disabled={isConnected}
               className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-neutral-800/60 text-neutral-200 transition-all hover:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed border border-neutral-700"
             >
-              <Languages className="w-3.5 h-3.5 text-blue-400" />
+              <Languages className="w-3.5 h-3.5 text-emerald-400" />
               <span>EN &harr; {selectedLang.flag} {selectedLang.name}</span>
               <ChevronDown className={`w-3 h-3 transition-transform ${showLangDropdown ? 'rotate-180' : ''}`} />
             </button>
@@ -474,14 +474,14 @@ export default function App() {
                       onClick={() => { setSelectedLang(lang); setShowLangDropdown(false); }}
                       className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
                         selectedLang.code === lang.code
-                          ? 'bg-blue-600/20 text-white'
+                          ? 'bg-emerald-600/20 text-white'
                           : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200'
                       }`}
                     >
                       <span className="text-base">{lang.flag}</span>
                       <span>English &harr; {lang.name}</span>
                       {selectedLang.code === lang.code && (
-                        <span className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-400" />
+                        <span className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400" />
                       )}
                     </button>
                   ))}
@@ -492,7 +492,7 @@ export default function App() {
 
           {/* Status */}
           <div className="flex items-center gap-2 text-xs text-neutral-400">
-            <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-blue-500 animate-pulse' : 'bg-neutral-600'}`} />
+            <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-neutral-600'}`} />
             {isConnected ? 'Connected' : 'Ready'}
           </div>
         </div>
@@ -523,7 +523,7 @@ export default function App() {
                     value={settings.geminiApiKey}
                     onChange={(e) => updateSettings({ geminiApiKey: e.target.value })}
                     placeholder="Falls back to GEMINI_API_KEY env var"
-                    className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-blue-500 pr-10"
+                    className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-emerald-500 pr-10"
                   />
                   <button
                     onClick={() => setShowApiKey(!showApiKey)}
@@ -606,7 +606,7 @@ export default function App() {
                   step="0.5"
                   value={settings.chunkDurationS}
                   onChange={(e) => updateSettings({ chunkDurationS: parseFloat(e.target.value) })}
-                  className="w-full accent-blue-500 mb-4"
+                  className="w-full accent-emerald-500 mb-4"
                 />
                 <div className="flex justify-between text-xs text-neutral-600 -mt-3 mb-4">
                   <span>1s (faster)</span>
@@ -623,7 +623,7 @@ export default function App() {
                   step="0.001"
                   value={settings.vadThreshold}
                   onChange={(e) => updateSettings({ vadThreshold: parseFloat(e.target.value) })}
-                  className="w-full accent-blue-500 mb-1"
+                  className="w-full accent-emerald-500 mb-1"
                 />
                 <div className="flex justify-between text-xs text-neutral-600 mb-4">
                   <span>0.001 (sensitive)</span>
@@ -637,7 +637,7 @@ export default function App() {
                 <select
                   value={settings.srcLang}
                   onChange={(e) => updateSettings({ srcLang: e.target.value })}
-                  className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-200 focus:outline-none focus:border-blue-500"
+                  className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-200 focus:outline-none focus:border-emerald-500"
                 >
                   {SOURCE_LANGS.map(l => (
                     <option key={l.code} value={l.code}>{l.name}</option>
@@ -707,8 +707,8 @@ export default function App() {
                 )}
                 {outputSubtitles && (
                   <div className="self-end max-w-2xl text-right">
-                    <span className="text-xs font-medium tracking-wider text-blue-400 uppercase mb-1 block">Translation</span>
-                    <div className="text-xl font-medium text-white bg-blue-500/20 backdrop-blur-md px-5 py-3 rounded-xl inline-block border border-blue-500/30 max-h-32 overflow-hidden relative shadow-lg shadow-blue-500/10">
+                    <span className="text-xs font-medium tracking-wider text-emerald-400 uppercase mb-1 block">Translation</span>
+                    <div className="text-xl font-medium text-white bg-emerald-500/20 backdrop-blur-md px-5 py-3 rounded-xl inline-block border border-emerald-500/30 max-h-32 overflow-hidden relative shadow-lg shadow-emerald-500/10">
                       <p>{outputSubtitles.length > 200 ? '...' + outputSubtitles.slice(-200) : outputSubtitles}</p>
                     </div>
                   </div>
@@ -739,7 +739,7 @@ export default function App() {
             {!isConnected ? (
               <button
                 onClick={startSession}
-                className="flex items-center gap-2 px-7 py-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-full font-medium text-sm transition-colors shadow-lg shadow-blue-500/20"
+                className="flex items-center gap-2 px-7 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full font-medium text-sm transition-colors shadow-lg shadow-emerald-500/20"
               >
                 <Play className="w-4.5 h-4.5 fill-current" />
                 Start Translation
@@ -765,7 +765,7 @@ export default function App() {
                   setTimeout(() => { startSession(); }, 500);
                 }
               }}
-              className={`p-3.5 rounded-full transition-colors ${isScreenSharing ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30' : 'bg-neutral-800 text-neutral-200 hover:bg-neutral-700'}`}
+              className={`p-3.5 rounded-full transition-colors ${isScreenSharing ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30' : 'bg-neutral-800 text-neutral-200 hover:bg-neutral-700'}`}
               title={isScreenSharing ? "Switch to Camera" : "Share Screen (e.g., Zoom)"}
             >
               {isScreenSharing ? <MonitorOff className="w-5 h-5" /> : <MonitorUp className="w-5 h-5" />}
