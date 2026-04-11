@@ -68,8 +68,17 @@ export default function App() {
       audioContextRef.current = audioContext;
       nextPlayTimeRef.current = audioContext.currentTime;
 
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      let stream: MediaStream;
+      if (isScreenSharingRef.current) {
+        stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+      } else {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      }
       streamRef.current = stream;
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
 
       const ws = new WebSocket('ws://localhost:8090/ws/translate');
       localWsRef.current = ws;
