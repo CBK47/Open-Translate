@@ -101,10 +101,27 @@ def pcm16_bytes_to_float32(pcm_bytes: bytes) -> np.ndarray:
 
 
 def float32_to_wav_base64(audio: np.ndarray, sample_rate: int = 16000) -> str:
-    """Encode float32 audio array as base64 WAV."""
-    tensor = torch.from_numpy(audio).unsqueeze(0)  # (1, samples)
+    """Encode float32 audio array as base64 WAV (pure Python, no torchcodec)."""
+    # Convert float32 [-1,1] to int16
+    pcm16 = (np.clip(audio, -1.0, 1.0) * 32767).astype(np.int16)
     buf = io.BytesIO()
-    torchaudio.save(buf, tensor, sample_rate, format="wav")
+    # Write WAV header manually
+    num_samples = len(pcm16)
+    data_size = num_samples * 2  # 2 bytes per int16 sample
+    buf.write(b'RIFF')
+    buf.write(struct.pack('<I', 36 + data_size))  # file size - 8
+    buf.write(b'WAVE')
+    buf.write(b'fmt ')
+    buf.write(struct.pack('<I', 16))        # fmt chunk size
+    buf.write(struct.pack('<H', 1))         # PCM format
+    buf.write(struct.pack('<H', 1))         # mono
+    buf.write(struct.pack('<I', sample_rate))
+    buf.write(struct.pack('<I', sample_rate * 2))  # byte rate
+    buf.write(struct.pack('<H', 2))         # block align
+    buf.write(struct.pack('<H', 16))        # bits per sample
+    buf.write(b'data')
+    buf.write(struct.pack('<I', data_size))
+    buf.write(pcm16.tobytes())
     buf.seek(0)
     return base64.b64encode(buf.read()).decode("ascii")
 
@@ -121,7 +138,7 @@ def translate_audio(
     """
     # Prepare inputs — processor expects (batch, samples) float tensor at 16kHz
     inputs = processor(
-        audios=audio_array,
+        audio=audio_array,
         sampling_rate=SAMPLE_RATE,
         return_tensors="pt",
         src_lang=src_lang,
@@ -152,7 +169,8 @@ def translate_audio(
 
         if waveform is not None:
             wav_np = waveform.squeeze().cpu().float().numpy()
-            result["audio"] = float32_to_wav_base64(wav_np, int(out_sr) if isinstance(out_sr, (int, float)) else 16000)
+            sr = int(out_sr.item()) if hasattr(out_sr, 'item') else int(out_sr) if isinstance(out_sr, (int, float)) else 16000
+            result["audio"] = float32_to_wav_base64(wav_np, sr)
     except Exception as e:
         logger.error(f"S2ST error: {e}")
 
