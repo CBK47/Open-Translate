@@ -39,8 +39,10 @@ app.add_middleware(
 
 MODEL_NAME = "facebook/seamless-m4t-v2-large"
 SAMPLE_RATE = 16000
-CHUNK_DURATION_S = 2.0  # buffer this much audio before translating
+OUTPUT_SAMPLE_RATE = 16000  # Seamless vocoder always outputs 16kHz
+CHUNK_DURATION_S = 3.0  # buffer this much audio before translating (longer = better quality)
 CHUNK_SAMPLES = int(SAMPLE_RATE * CHUNK_DURATION_S)
+VAD_ENERGY_THRESHOLD = 0.01  # RMS energy below this = silence, skip translation
 
 processor: Optional[AutoProcessor] = None
 s2tt_model = None  # speech-to-text translation
@@ -169,8 +171,8 @@ def translate_audio(
 
         if waveform is not None:
             wav_np = waveform.squeeze().cpu().float().numpy()
-            sr = int(out_sr.item()) if hasattr(out_sr, 'item') else int(out_sr) if isinstance(out_sr, (int, float)) else 16000
-            result["audio"] = float32_to_wav_base64(wav_np, sr)
+            # Always use 16kHz — the out_sr tensor is unreliable (returns sample count)
+            result["audio"] = float32_to_wav_base64(wav_np, OUTPUT_SAMPLE_RATE)
     except Exception as e:
         logger.error(f"S2ST error: {e}")
 
@@ -234,6 +236,12 @@ async def websocket_translate(ws: WebSocket):
                     audio_buffer = audio_buffer[CHUNK_SAMPLES * 2:]
 
                     audio_array = pcm16_bytes_to_float32(chunk_bytes)
+
+                    # VAD: skip silent / background noise chunks
+                    rms = np.sqrt(np.mean(audio_array ** 2))
+                    if rms < VAD_ENERGY_THRESHOLD:
+                        logger.debug(f"Skipping silent chunk (RMS={rms:.4f})")
+                        continue
 
                     # Run translation in thread pool to not block the event loop
                     loop = asyncio.get_event_loop()
