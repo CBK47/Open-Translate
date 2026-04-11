@@ -1,5 +1,5 @@
 """
-Stream Translator — Local Seamless M4T v2 Backend
+Open Translate — Local Seamless M4T v2 Backend
 FastAPI + WebSocket server for real-time speech translation on Apple Silicon.
 """
 
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 # ── App setup ──────────────────────────────────────────────────────────────────
 
-app = FastAPI(title="Stream Translator - Seamless M4T v2")
+app = FastAPI(title="Open Translate - Seamless M4T v2")
 
 app.add_middleware(
     CORSMiddleware,
