@@ -1,0 +1,9 @@
+{
+  "name": "AI Translator",
+  "description": "Real-time Spanish to English and English to Spanish translation using Gemini Live API with camera and screen share support.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "display-capture"
+  ]
+}
