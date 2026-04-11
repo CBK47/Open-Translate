@@ -1,0 +1,8 @@
+torch
+torchaudio
+transformers
+sentencepiece
+fastapi
+uvicorn[standard]
+websockets
+numpy

@@ -6,3 +6,19 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Model cache (HuggingFace downloads)
+*.bin
+*.safetensors
+server/models/
+
+# IDE
+.vscode/
+.idea/
