@@ -2,6 +2,45 @@ import { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
 import { Mic, MicOff, Video, VideoOff, MonitorUp, MonitorOff, Globe2, Play, Square, ChevronDown, Cloud, Server, Languages, Settings2, X, Eye, EyeOff } from 'lucide-react';
 
+// ── Scrolling code background ────────────────────────────────────────────────
+const SCROLL_SNIPPETS = [
+  'every voice deserves to be heard','open source breaks down walls','built by the community for the community','language should never be a barrier','translate.garden is free and open source','collaboration across borders','your words your language your way','together we understand each other','no gatekeepers just open doors','the best ideas come from everywhere','privacy first always','speak freely in any language','powered by people not profit','CBK Solutions Sheffield UK',
+  'cada voz merece ser escuchada','el codigo abierto rompe barreras','construido por la comunidad para la comunidad','el idioma nunca deberia ser un obstaculo','colaboracion sin fronteras','tus palabras tu idioma tu manera','juntos nos entendemos','sin barreras solo puertas abiertas','las mejores ideas vienen de todas partes','habla libremente en cualquier idioma','la traduccion es un acto de generosidad','conectando personas conectando mundos','hecho con amor y codigo abierto','la diversidad nos hace mas fuertes',
+  'chaque voix compte dans ce jardin','la collaboration depasse les frontieres','ensemble on se comprend mieux','le code ouvert change le monde','jede Stimme verdient gehoert zu werden','Zusammenarbeit kennt keine Grenzen','gemeinsam verstehen wir uns besser','Sprache verbindet Menschen','cada voz merece ser ouvida','colaboracao sem fronteiras','codigo aberto muda o mundo','ogni voce merita di essere ascoltata','collaborazione senza confini','insieme ci capiamo meglio','すべての声に価値がある','オープンソースが壁を壊す','言葉の壁を越えて繋がろう','共に理解し合える世界へ','每一个声音都值得被听见','开源打破语言壁垒','协作跨越国界','一起我们能理解彼此','모든 목소리는 들릴 자격이 있다','오픈소스가 장벽을 허문다','함께하면 서로를 이해할 수 있다','언어의 장벽을 넘어 연결되다','كل صوت يستحق أن يُسمع','المصدر المفتوح يكسر الحواجز','हर आवाज़ सुनने योग्य है','ओपन सोर्स दीवारें तोड़ता है',
+  'chaque voix compte dans ce jardin','jede Stimme verdient gehoert zu werden','cada voz merece ser ouvida','ogni voce merita di essere ascoltata','すべての声に価値がある','每一个声音都值得被听见','모든 목소리는 들릴 자격이 있다','كل صوت يستحق أن يُسمع','हर आवाज़ सुनने योग्य है','भाषा कभी बाधा नहीं होनी चाहिए',
+];
+function ScrollingCodeBackground() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const rows: { el: HTMLDivElement; speed: number; offset: number }[] = [];
+    for (let i = 0; i < 12; i++) {
+      const row = document.createElement('div');
+      const isAccent = Math.random() < 0.2;
+      row.style.cssText = `position:absolute;white-space:nowrap;font-family:'JetBrains Mono',monospace;font-size:${11+Math.random()*4}px;color:${isAccent?'#3DA480':'#eee'};opacity:${0.06+Math.random()*0.04};top:${(i/12)*100+Math.random()*2}%;will-change:transform;pointer-events:none;`;
+      const text: string[] = [];
+      for (let j = 0; j < 8; j++) {
+        const cluster: string[] = [];
+        for (let k = 0; k < 2+Math.floor(Math.random()*3); k++) cluster.push(SCROLL_SNIPPETS[Math.floor(Math.random()*SCROLL_SNIPPETS.length)]);
+        text.push(cluster.join(' \u00B7 ')); text.push('\u00A0'.repeat(40+Math.floor(Math.random()*60)));
+      }
+      row.textContent = text.join('');
+      const speed = (0.2+Math.random()*0.15)*(Math.random()<0.8?1:-1);
+      rows.push({ el: row, speed, offset: Math.random()*-2000 }); container.appendChild(row);
+    }
+    let lastTime = performance.now(); let rafId: number;
+    function animate(now: number) {
+      const delta = (now-lastTime)/16.67; lastTime = now;
+      for (const row of rows) { row.offset += row.speed*delta; if (Math.abs(row.offset)>3000) row.offset=row.offset>0?-2000:0; row.el.style.transform=`translateX(${row.offset}px)`; }
+      rafId = requestAnimationFrame(animate);
+    }
+    rafId = requestAnimationFrame(animate);
+    return () => { cancelAnimationFrame(rafId); container.innerHTML=''; };
+  }, []);
+  return <div ref={containerRef} style={{ position:'fixed',inset:0,overflow:'hidden',pointerEvents:'none',zIndex:0 }} aria-hidden="true" />;
+}
+
 const LANGUAGE_PAIRS = [
   { code: 'es', name: 'Spanish', flag: '\u{1F1EA}\u{1F1F8}', seamlessCode: 'spa' },
   { code: 'fr', name: 'French', flag: '\u{1F1EB}\u{1F1F7}', seamlessCode: 'fra' },
@@ -218,9 +257,26 @@ export default function App() {
   const startGeminiSession = async () => {
     setErrorMsg(null);
     try {
-      const apiKey = settings.geminiApiKey || process.env.GEMINI_API_KEY;
+      let apiKey = settings.geminiApiKey || process.env.GEMINI_API_KEY;
+      // If no local key, try fetching a rate-limited token from the server
       if (!apiKey) {
-        setErrorMsg('No Gemini API key configured. Add one in Settings or set GEMINI_API_KEY env var.');
+        try {
+          const res = await fetch('/api/token');
+          if (res.ok) {
+            const data = await res.json();
+            apiKey = data.token;
+          } else {
+            const data = await res.json().catch(() => ({}));
+            setErrorMsg(data.error || 'Could not get API token. Add your own key in Settings.');
+            return;
+          }
+        } catch {
+          setErrorMsg('No Gemini API key configured. Add one in Settings.');
+          return;
+        }
+      }
+      if (!apiKey) {
+        setErrorMsg('No Gemini API key available. Add one in Settings.');
         return;
       }
       const ai = new GoogleGenAI({ apiKey });
@@ -405,19 +461,20 @@ export default function App() {
   const isPresetModel = MODEL_PRESETS.some(p => p.id === settings.localModelName);
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-50 flex flex-col font-sans">
+    <div className="relative min-h-screen bg-neutral-950 text-neutral-50 flex flex-col font-sans">
+      <ScrollingCodeBackground />
       <header className="px-4 md:px-6 py-3 border-b border-neutral-800 flex items-center justify-between bg-neutral-900/50 backdrop-blur-sm sticky top-0 z-10 gap-3 flex-wrap">
         <div className="flex items-center gap-3">
-          <div className="bg-emerald-500/20 p-2 rounded-lg">
-            <Globe2 className="w-5 h-5 text-emerald-400" />
+          <div className="bg-[#3DA480]/20 p-2 rounded-lg">
+            <Globe2 className="w-5 h-5 text-[#3DA480]" />
           </div>
-          <h1 className="text-lg font-medium tracking-tight">translate<span className="text-emerald-400">.garden</span></h1>
+          <h1 className="text-lg font-medium tracking-tight">translate<span className="text-[#3DA480]">.garden</span></h1>
         </div>
         <div className="flex items-center gap-3">
           {/* Settings Gear */}
           <button
             onClick={() => setShowSettings(!showSettings)}
-            className={`p-1.5 rounded-lg transition-colors ${showSettings ? 'bg-emerald-600/20 text-emerald-400' : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'}`}
+            className={`p-1.5 rounded-lg transition-colors ${showSettings ? 'bg-[#3DA480]/20 text-[#3DA480]' : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'}`}
             title="Settings"
           >
             <Settings2 className="w-4.5 h-4.5" />
@@ -442,14 +499,14 @@ export default function App() {
               disabled={isConnected}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                 backendMode === 'local'
-                  ? 'bg-emerald-600 text-white shadow-sm'
+                  ? 'bg-[#3DA480] text-white shadow-sm'
                   : 'text-neutral-400 hover:text-neutral-200'
               } disabled:cursor-not-allowed`}
             >
               <Server className="w-3.5 h-3.5" />
               Local
               {backendMode === 'local' && (
-                <span className={`w-1.5 h-1.5 rounded-full ${localServerStatus === 'online' ? 'bg-emerald-300' : 'bg-red-400'}`} />
+                <span className={`w-1.5 h-1.5 rounded-full ${localServerStatus === 'online' ? 'bg-[#3DA480]' : 'bg-red-400'}`} />
               )}
             </button>
           </div>
@@ -461,7 +518,7 @@ export default function App() {
               disabled={isConnected}
               className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-neutral-800/60 text-neutral-200 transition-all hover:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed border border-neutral-700"
             >
-              <Languages className="w-3.5 h-3.5 text-emerald-400" />
+              <Languages className="w-3.5 h-3.5 text-[#3DA480]" />
               <span>EN &harr; {selectedLang.flag} {selectedLang.name}</span>
               <ChevronDown className={`w-3 h-3 transition-transform ${showLangDropdown ? 'rotate-180' : ''}`} />
             </button>
@@ -474,14 +531,14 @@ export default function App() {
                       onClick={() => { setSelectedLang(lang); setShowLangDropdown(false); }}
                       className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
                         selectedLang.code === lang.code
-                          ? 'bg-emerald-600/20 text-white'
+                          ? 'bg-[#3DA480]/20 text-white'
                           : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200'
                       }`}
                     >
                       <span className="text-base">{lang.flag}</span>
                       <span>English &harr; {lang.name}</span>
                       {selectedLang.code === lang.code && (
-                        <span className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                        <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#3DA480]" />
                       )}
                     </button>
                   ))}
@@ -492,7 +549,7 @@ export default function App() {
 
           {/* Status */}
           <div className="flex items-center gap-2 text-xs text-neutral-400">
-            <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-neutral-600'}`} />
+            <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-[#3DA480] animate-pulse' : 'bg-neutral-600'}`} />
             {isConnected ? 'Connected' : 'Ready'}
           </div>
         </div>
@@ -523,7 +580,7 @@ export default function App() {
                     value={settings.geminiApiKey}
                     onChange={(e) => updateSettings({ geminiApiKey: e.target.value })}
                     placeholder="Falls back to GEMINI_API_KEY env var"
-                    className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-emerald-500 pr-10"
+                    className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-[#3DA480] pr-10"
                   />
                   <button
                     onClick={() => setShowApiKey(!showApiKey)}
@@ -537,7 +594,7 @@ export default function App() {
               {/* Local Backend */}
               <section>
                 <h3 className="text-sm font-semibold text-neutral-300 uppercase tracking-wider mb-3 flex items-center gap-2">
-                  <Server className="w-4 h-4 text-emerald-400" /> Local Backend
+                  <Server className="w-4 h-4 text-[#3DA480]" /> Local Backend
                 </h3>
 
                 <label className="block text-xs text-neutral-400 mb-1.5">Server URL</label>
@@ -545,7 +602,7 @@ export default function App() {
                   type="text"
                   value={settings.localServerUrl}
                   onChange={(e) => updateSettings({ localServerUrl: e.target.value })}
-                  className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-200 focus:outline-none focus:border-emerald-500 mb-4"
+                  className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-200 focus:outline-none focus:border-[#3DA480] mb-4"
                 />
 
                 <label className="block text-xs text-neutral-400 mb-1.5">Model</label>
@@ -556,7 +613,7 @@ export default function App() {
                       onClick={() => updateSettings({ localModelName: preset.id })}
                       className={`w-full text-left px-3 py-2.5 rounded-lg border text-sm transition-all ${
                         settings.localModelName === preset.id
-                          ? 'border-emerald-500/50 bg-emerald-500/10 text-white'
+                          ? 'border-[#3DA480]/50 bg-[#3DA480]/10 text-white'
                           : 'border-neutral-700 bg-neutral-800 text-neutral-300 hover:border-neutral-600'
                       }`}
                     >
@@ -572,7 +629,7 @@ export default function App() {
                     }}
                     className={`w-full text-left px-3 py-2.5 rounded-lg border text-sm transition-all ${
                       !isPresetModel
-                        ? 'border-emerald-500/50 bg-emerald-500/10 text-white'
+                        ? 'border-[#3DA480]/50 bg-[#3DA480]/10 text-white'
                         : 'border-neutral-700 bg-neutral-800 text-neutral-300 hover:border-neutral-600'
                     }`}
                   >
@@ -585,7 +642,7 @@ export default function App() {
                       value={settings.localModelName}
                       onChange={(e) => updateSettings({ localModelName: e.target.value })}
                       placeholder="e.g. facebook/seamless-m4t-v2-large"
-                      className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-200 focus:outline-none focus:border-emerald-500"
+                      className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-200 focus:outline-none focus:border-[#3DA480]"
                     />
                   )}
                 </div>
@@ -606,7 +663,7 @@ export default function App() {
                   step="0.5"
                   value={settings.chunkDurationS}
                   onChange={(e) => updateSettings({ chunkDurationS: parseFloat(e.target.value) })}
-                  className="w-full accent-emerald-500 mb-4"
+                  className="w-full accent-[#3DA480] mb-4"
                 />
                 <div className="flex justify-between text-xs text-neutral-600 -mt-3 mb-4">
                   <span>1s (faster)</span>
@@ -623,7 +680,7 @@ export default function App() {
                   step="0.001"
                   value={settings.vadThreshold}
                   onChange={(e) => updateSettings({ vadThreshold: parseFloat(e.target.value) })}
-                  className="w-full accent-emerald-500 mb-1"
+                  className="w-full accent-[#3DA480] mb-1"
                 />
                 <div className="flex justify-between text-xs text-neutral-600 mb-4">
                   <span>0.001 (sensitive)</span>
@@ -637,7 +694,7 @@ export default function App() {
                 <select
                   value={settings.srcLang}
                   onChange={(e) => updateSettings({ srcLang: e.target.value })}
-                  className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-200 focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-200 focus:outline-none focus:border-[#3DA480]"
                 >
                   {SOURCE_LANGS.map(l => (
                     <option key={l.code} value={l.code}>{l.name}</option>
@@ -707,8 +764,8 @@ export default function App() {
                 )}
                 {outputSubtitles && (
                   <div className="self-end max-w-2xl text-right">
-                    <span className="text-xs font-medium tracking-wider text-emerald-400 uppercase mb-1 block">Translation</span>
-                    <div className="text-xl font-medium text-white bg-emerald-500/20 backdrop-blur-md px-5 py-3 rounded-xl inline-block border border-emerald-500/30 max-h-32 overflow-hidden relative shadow-lg shadow-emerald-500/10">
+                    <span className="text-xs font-medium tracking-wider text-[#3DA480] uppercase mb-1 block">Translation</span>
+                    <div className="text-xl font-medium text-white bg-[#3DA480]/20 backdrop-blur-md px-5 py-3 rounded-xl inline-block border border-[#3DA480]/30 max-h-32 overflow-hidden relative shadow-lg shadow-[#3DA480]/10">
                       <p>{outputSubtitles.length > 200 ? '...' + outputSubtitles.slice(-200) : outputSubtitles}</p>
                     </div>
                   </div>
@@ -739,7 +796,7 @@ export default function App() {
             {!isConnected ? (
               <button
                 onClick={startSession}
-                className="flex items-center gap-2 px-7 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full font-medium text-sm transition-colors shadow-lg shadow-emerald-500/20"
+                className="flex items-center gap-2 px-7 py-3.5 bg-[#3DA480] hover:bg-[#3DA480] text-white rounded-full font-medium text-sm transition-colors shadow-lg shadow-[#3DA480]/20"
               >
                 <Play className="w-4.5 h-4.5 fill-current" />
                 Start Translation
@@ -765,7 +822,7 @@ export default function App() {
                   setTimeout(() => { startSession(); }, 500);
                 }
               }}
-              className={`p-3.5 rounded-full transition-colors ${isScreenSharing ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30' : 'bg-neutral-800 text-neutral-200 hover:bg-neutral-700'}`}
+              className={`p-3.5 rounded-full transition-colors ${isScreenSharing ? 'bg-[#3DA480]/20 text-[#3DA480] hover:bg-[#3DA480]/30' : 'bg-neutral-800 text-neutral-200 hover:bg-neutral-700'}`}
               title={isScreenSharing ? "Switch to Camera" : "Share Screen (e.g., Zoom)"}
             >
               {isScreenSharing ? <MonitorOff className="w-5 h-5" /> : <MonitorUp className="w-5 h-5" />}
