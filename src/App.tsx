@@ -705,82 +705,80 @@ export default function App() {
       <div className="flex-1 flex gap-4 p-4 md:p-6 max-w-7xl mx-auto w-full min-h-0">
       {/* Settings Panel - inline to the right of main content */}
       {showSettings && (
-          <div className="order-2 w-80 shrink-0 bg-neutral-900 border border-neutral-800 rounded-2xl shadow-2xl overflow-y-auto flex flex-col">
-            <div className="sticky top-0 bg-neutral-900/95 backdrop-blur-sm border-b border-neutral-800 px-4 py-3 flex items-center justify-between z-10 rounded-t-2xl">
-              <h2 className="text-base font-semibold">Settings</h2>
+          <div className="order-2 w-96 shrink-0 bg-neutral-900 border border-neutral-800 rounded-2xl shadow-2xl overflow-y-auto flex flex-col self-stretch">
+            <div className="sticky top-0 bg-neutral-900/95 backdrop-blur-sm border-b border-neutral-800 px-4 py-2 flex items-center justify-between z-10 rounded-t-2xl">
+              <h2 className="text-sm font-semibold">Settings</h2>
               <button onClick={() => setShowSettings(false)} className="p-1 rounded-lg hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 transition-colors">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="p-4 space-y-6 text-sm">
+            <div className="p-3 space-y-4 text-xs">
               {/* Cloud Backend */}
               <section>
-                <h3 className="text-sm font-semibold text-neutral-300 uppercase tracking-wider mb-3 flex items-center gap-2">
-                  <Cloud className="w-4 h-4 text-blue-400" /> Cloud Backend
+                <h3 className="text-xs font-semibold text-neutral-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                  <Cloud className="w-3.5 h-3.5 text-blue-400" /> Cloud Backend
                 </h3>
-                <label className="block text-xs text-neutral-400 mb-1.5">Gemini API Key</label>
+                <label className="block text-[10px] text-neutral-400 mb-1">Gemini API Key</label>
                 <div className="relative">
                   <input
                     type={showApiKey ? 'text' : 'password'}
                     value={settings.geminiApiKey}
                     onChange={(e) => updateSettings({ geminiApiKey: e.target.value })}
                     placeholder="Falls back to GEMINI_API_KEY env var"
-                    className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-[#3DA480] pr-10"
+                    className="w-full bg-neutral-800 border border-neutral-700 rounded-md px-2 py-1.5 text-xs text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-[#3DA480] pr-8"
                   />
                   <button
                     onClick={() => setShowApiKey(!showApiKey)}
                     className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300"
                   >
-                    {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showApiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                   </button>
                 </div>
               </section>
 
               {/* Local Backend */}
               <section>
-                <h3 className="text-sm font-semibold text-neutral-300 uppercase tracking-wider mb-3 flex items-center gap-2">
-                  <Server className="w-4 h-4 text-[#3DA480]" /> Local Backend
+                <h3 className="text-xs font-semibold text-neutral-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                  <Server className="w-3.5 h-3.5 text-[#3DA480]" /> Local Backend
                 </h3>
 
-                <label className="block text-xs text-neutral-400 mb-1.5">Server URL</label>
+                <label className="block text-[10px] text-neutral-400 mb-1">Server URL</label>
                 <input
                   type="text"
                   value={settings.localServerUrl}
                   onChange={(e) => updateSettings({ localServerUrl: e.target.value })}
-                  className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-200 focus:outline-none focus:border-[#3DA480] mb-4"
+                  className="w-full bg-neutral-800 border border-neutral-700 rounded-md px-2 py-1.5 text-xs text-neutral-200 focus:outline-none focus:border-[#3DA480] mb-2"
                 />
 
-                <label className="block text-xs text-neutral-400 mb-1.5">Model</label>
-                <div className="space-y-2 mb-3">
+                <label className="block text-[10px] text-neutral-400 mb-1">Model</label>
+                <div className="space-y-1 mb-2">
                   {MODEL_PRESETS.map((preset) => (
                     <button
                       key={preset.id}
                       onClick={() => updateSettings({ localModelName: preset.id })}
-                      className={`w-full text-left px-3 py-2.5 rounded-lg border text-sm transition-all ${
+                      className={`w-full text-left px-2 py-1.5 rounded-md border text-xs transition-all ${
                         settings.localModelName === preset.id
                           ? 'border-[#3DA480]/50 bg-[#3DA480]/10 text-white'
                           : 'border-neutral-700 bg-neutral-800 text-neutral-300 hover:border-neutral-600'
                       }`}
                     >
-                      <div className="font-medium">{preset.label}</div>
-                      <div className="text-xs text-neutral-500 mt-0.5">{preset.size} &middot; {preset.langs} languages</div>
+                      <span className="font-medium">{preset.label}</span>
+                      <span className="text-neutral-500 ml-1">{preset.size}</span>
                     </button>
                   ))}
-                  {/* Custom model */}
                   <button
                     onClick={() => {
                       if (!isPresetModel) return;
                       updateSettings({ localModelName: customModelId || '' });
                     }}
-                    className={`w-full text-left px-3 py-2.5 rounded-lg border text-sm transition-all ${
+                    className={`w-full text-left px-2 py-1.5 rounded-md border text-xs transition-all ${
                       !isPresetModel
                         ? 'border-[#3DA480]/50 bg-[#3DA480]/10 text-white'
                         : 'border-neutral-700 bg-neutral-800 text-neutral-300 hover:border-neutral-600'
                     }`}
                   >
-                    <div className="font-medium">Custom HuggingFace Model</div>
-                    <div className="text-xs text-neutral-500 mt-0.5">Enter any model ID from HuggingFace Hub</div>
+                    <span className="font-medium">Custom HuggingFace Model</span>
                   </button>
                   {!isPresetModel && (
                     <input
@@ -788,18 +786,18 @@ export default function App() {
                       value={settings.localModelName}
                       onChange={(e) => updateSettings({ localModelName: e.target.value })}
                       placeholder="e.g. facebook/seamless-m4t-v2-large"
-                      className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-200 focus:outline-none focus:border-[#3DA480]"
+                      className="w-full bg-neutral-800 border border-neutral-700 rounded-md px-2 py-1.5 text-xs text-neutral-200 focus:outline-none focus:border-[#3DA480]"
                     />
                   )}
                 </div>
-                <p className="text-xs text-neutral-500">Changing the model requires a server restart.</p>
+                <p className="text-[10px] text-neutral-500">Model change requires server restart.</p>
               </section>
 
               {/* Audio Settings */}
               <section>
-                <h3 className="text-sm font-semibold text-neutral-300 uppercase tracking-wider mb-3">Audio Settings</h3>
+                <h3 className="text-xs font-semibold text-neutral-300 uppercase tracking-wider mb-1.5">Audio Settings</h3>
 
-                <label className="block text-xs text-neutral-400 mb-1.5">
+                <label className="block text-[10px] text-neutral-400 mb-0.5">
                   Chunk Duration: {settings.chunkDurationS.toFixed(1)}s
                 </label>
                 <input
@@ -809,14 +807,14 @@ export default function App() {
                   step="0.5"
                   value={settings.chunkDurationS}
                   onChange={(e) => updateSettings({ chunkDurationS: parseFloat(e.target.value) })}
-                  className="w-full accent-[#3DA480] mb-4"
+                  className="w-full accent-[#3DA480] mb-1"
                 />
-                <div className="flex justify-between text-xs text-neutral-600 -mt-3 mb-4">
+                <div className="flex justify-between text-[10px] text-neutral-600 mb-2">
                   <span>1s (faster)</span>
-                  <span>5s (more accurate)</span>
+                  <span>5s (accurate)</span>
                 </div>
 
-                <label className="block text-xs text-neutral-400 mb-1.5">
+                <label className="block text-[10px] text-neutral-400 mb-0.5">
                   VAD Threshold: {settings.vadThreshold.toFixed(3)}
                 </label>
                 <input
@@ -828,7 +826,7 @@ export default function App() {
                   onChange={(e) => updateSettings({ vadThreshold: parseFloat(e.target.value) })}
                   className="w-full accent-[#3DA480] mb-1"
                 />
-                <div className="flex justify-between text-xs text-neutral-600 mb-4">
+                <div className="flex justify-between text-[10px] text-neutral-600">
                   <span>0.001 (sensitive)</span>
                   <span>0.1 (ignore noise)</span>
                 </div>
@@ -836,18 +834,18 @@ export default function App() {
 
               {/* Display */}
               <section>
-                <h3 className="text-sm font-semibold text-neutral-300 uppercase tracking-wider mb-3">Display</h3>
+                <h3 className="text-xs font-semibold text-neutral-300 uppercase tracking-wider mb-1.5">Display</h3>
                 <label className="flex items-center justify-between cursor-pointer">
-                  <span className="text-sm text-neutral-300">Scrolling background effect</span>
+                  <span className="text-xs text-neutral-300">Scrolling background</span>
                   <button onClick={() => setShowBackground(!showBackground)}
-                    className={`w-10 h-5 rounded-full transition-colors relative ${showBackground ? 'bg-[#3DA480]' : 'bg-neutral-700'}`}>
-                    <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${showBackground ? 'left-5' : 'left-0.5'}`} />
+                    className={`w-9 h-4.5 rounded-full transition-colors relative ${showBackground ? 'bg-[#3DA480]' : 'bg-neutral-700'}`}>
+                    <span className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white transition-transform ${showBackground ? 'left-[18px]' : 'left-0.5'}`} />
                   </button>
                 </label>
               </section>
 
               {/* Reset */}
-              <section className="pt-4 border-t border-neutral-800">
+              <section className="pt-2 border-t border-neutral-800">
                 <button
                   onClick={() => {
                     setSettings({ ...DEFAULT_SETTINGS });
