@@ -196,7 +196,7 @@ export default function App() {
         processor.connect(audioContext.destination);
 
         processor.onaudioprocess = (e) => {
-          if (isMicMutedRef.current || ws.readyState !== WebSocket.OPEN) return;
+          if ((isMicMutedRef.current && !isScreenSharingRef.current) || ws.readyState !== WebSocket.OPEN) return;
           const inputData = e.inputBuffer.getChannelData(0);
           const pcm16 = new Int16Array(inputData.length);
           for (let i = 0; i < inputData.length; i++) {
@@ -312,7 +312,7 @@ export default function App() {
               processor.connect(audioContext.destination);
 
               processor.onaudioprocess = (e) => {
-                if (isMicMutedRef.current) return;
+                if (isMicMutedRef.current && !isScreenSharingRef.current) return;
                 const inputData = e.inputBuffer.getChannelData(0);
                 const pcm16 = new Int16Array(inputData.length);
                 for (let i = 0; i < inputData.length; i++) {
