@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
-import { Mic, MicOff, Video, VideoOff, MonitorUp, MonitorOff, Globe2, Play, Square, ChevronDown, Cloud, Server, Languages, Settings2, X, Eye, EyeOff } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, MonitorUp, MonitorOff, Globe2, Play, Square, ChevronDown, Cloud, Server, Languages, Settings2, X, Eye, EyeOff, Search, Sun, Moon, Cog } from 'lucide-react';
 
 // ── Scrolling code background ────────────────────────────────────────────────
 const SCROLL_SNIPPETS = [
@@ -41,17 +41,111 @@ function ScrollingCodeBackground() {
   return <div ref={containerRef} style={{ position:'fixed',inset:0,overflow:'hidden',pointerEvents:'none',zIndex:0 }} aria-hidden="true" />;
 }
 
-const LANGUAGE_PAIRS = [
-  { code: 'es', name: 'Spanish', flag: '\u{1F1EA}\u{1F1F8}', seamlessCode: 'spa' },
-  { code: 'fr', name: 'French', flag: '\u{1F1EB}\u{1F1F7}', seamlessCode: 'fra' },
-  { code: 'de', name: 'German', flag: '\u{1F1E9}\u{1F1EA}', seamlessCode: 'deu' },
-  { code: 'pt', name: 'Portuguese', flag: '\u{1F1F5}\u{1F1F9}', seamlessCode: 'por' },
-  { code: 'it', name: 'Italian', flag: '\u{1F1EE}\u{1F1F9}', seamlessCode: 'ita' },
-  { code: 'zh', name: 'Chinese (Mandarin)', flag: '\u{1F1E8}\u{1F1F3}', seamlessCode: 'cmn' },
-  { code: 'ja', name: 'Japanese', flag: '\u{1F1EF}\u{1F1F5}', seamlessCode: 'jpn' },
-  { code: 'ko', name: 'Korean', flag: '\u{1F1F0}\u{1F1F7}', seamlessCode: 'kor' },
-  { code: 'ar', name: 'Arabic', flag: '\u{1F1F8}\u{1F1E6}', seamlessCode: 'arb' },
-  { code: 'hi', name: 'Hindi', flag: '\u{1F1EE}\u{1F1F3}', seamlessCode: 'hin' },
+// Common languages shown at top, then alphabetical. name = English, native = local script/name.
+const COMMON_LANG_CODES = ['eng','spa','fra','deu','por','ita','cmn','jpn','kor','arb','hin','rus'];
+const ALL_LANGUAGES: { code: string; name: string; native: string; flag: string }[] = [
+  { code: 'eng', name: 'English', native: 'English', flag: '\u{1F1EC}\u{1F1E7}' },
+  { code: 'spa', name: 'Spanish', native: 'Espa\u00F1ol', flag: '\u{1F1EA}\u{1F1F8}' },
+  { code: 'fra', name: 'French', native: 'Fran\u00E7ais', flag: '\u{1F1EB}\u{1F1F7}' },
+  { code: 'deu', name: 'German', native: 'Deutsch', flag: '\u{1F1E9}\u{1F1EA}' },
+  { code: 'por', name: 'Portuguese', native: 'Portugu\u00EAs', flag: '\u{1F1F5}\u{1F1F9}' },
+  { code: 'ita', name: 'Italian', native: 'Italiano', flag: '\u{1F1EE}\u{1F1F9}' },
+  { code: 'cmn', name: 'Chinese (Mandarin)', native: '\u4E2D\u6587 (\u666E\u901A\u8BDD)', flag: '\u{1F1E8}\u{1F1F3}' },
+  { code: 'jpn', name: 'Japanese', native: '\u65E5\u672C\u8A9E', flag: '\u{1F1EF}\u{1F1F5}' },
+  { code: 'kor', name: 'Korean', native: '\uD55C\uAD6D\uC5B4', flag: '\u{1F1F0}\u{1F1F7}' },
+  { code: 'arb', name: 'Arabic', native: '\u0627\u0644\u0639\u0631\u0628\u064A\u0629', flag: '\u{1F1F8}\u{1F1E6}' },
+  { code: 'hin', name: 'Hindi', native: '\u0939\u093F\u0928\u094D\u0926\u0940', flag: '\u{1F1EE}\u{1F1F3}' },
+  { code: 'rus', name: 'Russian', native: '\u0420\u0443\u0441\u0441\u043A\u0438\u0439', flag: '\u{1F1F7}\u{1F1FA}' },
+  { code: 'afr', name: 'Afrikaans', native: 'Afrikaans', flag: '\u{1F1FF}\u{1F1E6}' },
+  { code: 'amh', name: 'Amharic', native: '\u12A0\u121B\u122D\u129B', flag: '\u{1F1EA}\u{1F1F9}' },
+  { code: 'asm', name: 'Assamese', native: '\u0985\u09B8\u09AE\u09C0\u09AF\u09BC\u09BE', flag: '\u{1F1EE}\u{1F1F3}' },
+  { code: 'ast', name: 'Asturian', native: 'Asturianu', flag: '\u{1F1EA}\u{1F1F8}' },
+  { code: 'azj', name: 'Azerbaijani', native: 'Az\u0259rbaycanca', flag: '\u{1F1E6}\u{1F1FF}' },
+  { code: 'bel', name: 'Belarusian', native: '\u0411\u0435\u043B\u0430\u0440\u0443\u0441\u043A\u0430\u044F', flag: '\u{1F1E7}\u{1F1FE}' },
+  { code: 'ben', name: 'Bengali', native: '\u09AC\u09BE\u0982\u09B2\u09BE', flag: '\u{1F1E7}\u{1F1E9}' },
+  { code: 'bos', name: 'Bosnian', native: 'Bosanski', flag: '\u{1F1E7}\u{1F1E6}' },
+  { code: 'bul', name: 'Bulgarian', native: '\u0411\u044A\u043B\u0433\u0430\u0440\u0441\u043A\u0438', flag: '\u{1F1E7}\u{1F1EC}' },
+  { code: 'cat', name: 'Catalan', native: 'Catal\u00E0', flag: '\u{1F1EA}\u{1F1F8}' },
+  { code: 'ceb', name: 'Cebuano', native: 'Cebuano', flag: '\u{1F1F5}\u{1F1ED}' },
+  { code: 'ces', name: 'Czech', native: '\u010Ce\u0161tina', flag: '\u{1F1E8}\u{1F1FF}' },
+  { code: 'ckb', name: 'Central Kurdish', native: '\u06A9\u0648\u0631\u062F\u06CC', flag: '\u{1F1EE}\u{1F1F6}' },
+  { code: 'cym', name: 'Welsh', native: 'Cymraeg', flag: '\u{1F3F4}\u{E0067}\u{E0062}\u{E0077}\u{E006C}\u{E0073}\u{E007F}' },
+  { code: 'dan', name: 'Danish', native: 'Dansk', flag: '\u{1F1E9}\u{1F1F0}' },
+  { code: 'ell', name: 'Greek', native: '\u0395\u03BB\u03BB\u03B7\u03BD\u03B9\u03BA\u03AC', flag: '\u{1F1EC}\u{1F1F7}' },
+  { code: 'est', name: 'Estonian', native: 'Eesti', flag: '\u{1F1EA}\u{1F1EA}' },
+  { code: 'eus', name: 'Basque', native: 'Euskara', flag: '\u{1F1EA}\u{1F1F8}' },
+  { code: 'fin', name: 'Finnish', native: 'Suomi', flag: '\u{1F1EB}\u{1F1EE}' },
+  { code: 'fil', name: 'Filipino', native: 'Filipino', flag: '\u{1F1F5}\u{1F1ED}' },
+  { code: 'gle', name: 'Irish', native: 'Gaeilge', flag: '\u{1F1EE}\u{1F1EA}' },
+  { code: 'glg', name: 'Galician', native: 'Galego', flag: '\u{1F1EA}\u{1F1F8}' },
+  { code: 'guj', name: 'Gujarati', native: '\u0A97\u0AC1\u0A9C\u0AB0\u0ABE\u0AA4\u0AC0', flag: '\u{1F1EE}\u{1F1F3}' },
+  { code: 'hau', name: 'Hausa', native: 'Hausa', flag: '\u{1F1F3}\u{1F1EC}' },
+  { code: 'heb', name: 'Hebrew', native: '\u05E2\u05D1\u05E8\u05D9\u05EA', flag: '\u{1F1EE}\u{1F1F1}' },
+  { code: 'hrv', name: 'Croatian', native: 'Hrvatski', flag: '\u{1F1ED}\u{1F1F7}' },
+  { code: 'hun', name: 'Hungarian', native: 'Magyar', flag: '\u{1F1ED}\u{1F1FA}' },
+  { code: 'hye', name: 'Armenian', native: '\u0540\u0561\u0575\u0565\u0580\u0565\u0576', flag: '\u{1F1E6}\u{1F1F2}' },
+  { code: 'ibo', name: 'Igbo', native: 'Igbo', flag: '\u{1F1F3}\u{1F1EC}' },
+  { code: 'ind', name: 'Indonesian', native: 'Bahasa Indonesia', flag: '\u{1F1EE}\u{1F1E9}' },
+  { code: 'isl', name: 'Icelandic', native: '\u00CDslenska', flag: '\u{1F1EE}\u{1F1F8}' },
+  { code: 'jav', name: 'Javanese', native: 'Basa Jawa', flag: '\u{1F1EE}\u{1F1E9}' },
+  { code: 'kan', name: 'Kannada', native: '\u0C95\u0CA8\u0CCD\u0CA8\u0CA1', flag: '\u{1F1EE}\u{1F1F3}' },
+  { code: 'kat', name: 'Georgian', native: '\u10E5\u10D0\u10E0\u10D7\u10E3\u10DA\u10D8', flag: '\u{1F1EC}\u{1F1EA}' },
+  { code: 'kaz', name: 'Kazakh', native: '\u049A\u0430\u0437\u0430\u049B', flag: '\u{1F1F0}\u{1F1FF}' },
+  { code: 'khk', name: 'Mongolian', native: '\u041C\u043E\u043D\u0433\u043E\u043B', flag: '\u{1F1F2}\u{1F1F3}' },
+  { code: 'khm', name: 'Khmer', native: '\u1797\u17B6\u179F\u17B6\u1781\u17D2\u1798\u17C2\u179A', flag: '\u{1F1F0}\u{1F1ED}' },
+  { code: 'kir', name: 'Kyrgyz', native: '\u041A\u044B\u0440\u0433\u044B\u0437\u0447\u0430', flag: '\u{1F1F0}\u{1F1EC}' },
+  { code: 'lao', name: 'Lao', native: '\u0EA5\u0EB2\u0EA7', flag: '\u{1F1F1}\u{1F1E6}' },
+  { code: 'lit', name: 'Lithuanian', native: 'Lietuvi\u0173', flag: '\u{1F1F1}\u{1F1F9}' },
+  { code: 'ltz', name: 'Luxembourgish', native: 'L\u00EBtzebuergesch', flag: '\u{1F1F1}\u{1F1FA}' },
+  { code: 'lug', name: 'Luganda', native: 'Luganda', flag: '\u{1F1FA}\u{1F1EC}' },
+  { code: 'lvs', name: 'Latvian', native: 'Latvie\u0161u', flag: '\u{1F1F1}\u{1F1FB}' },
+  { code: 'mai', name: 'Maithili', native: '\u092E\u0948\u0925\u093F\u0932\u0940', flag: '\u{1F1EE}\u{1F1F3}' },
+  { code: 'mal', name: 'Malayalam', native: '\u0D2E\u0D32\u0D2F\u0D3E\u0D33\u0D02', flag: '\u{1F1EE}\u{1F1F3}' },
+  { code: 'mar', name: 'Marathi', native: '\u092E\u0930\u093E\u0920\u0940', flag: '\u{1F1EE}\u{1F1F3}' },
+  { code: 'mkd', name: 'Macedonian', native: '\u041C\u0430\u043A\u0435\u0434\u043E\u043D\u0441\u043A\u0438', flag: '\u{1F1F2}\u{1F1F0}' },
+  { code: 'mlt', name: 'Maltese', native: 'Malti', flag: '\u{1F1F2}\u{1F1F9}' },
+  { code: 'mni', name: 'Manipuri', native: '\u09AE\u09C8\u09A4\u09C8\u09B2\u09CB\u09A8', flag: '\u{1F1EE}\u{1F1F3}' },
+  { code: 'mya', name: 'Burmese', native: '\u1019\u103C\u1014\u103A\u1019\u102C', flag: '\u{1F1F2}\u{1F1F2}' },
+  { code: 'nld', name: 'Dutch', native: 'Nederlands', flag: '\u{1F1F3}\u{1F1F1}' },
+  { code: 'nno', name: 'Norwegian Nynorsk', native: 'Nynorsk', flag: '\u{1F1F3}\u{1F1F4}' },
+  { code: 'nob', name: 'Norwegian Bokm\u00E5l', native: 'Bokm\u00E5l', flag: '\u{1F1F3}\u{1F1F4}' },
+  { code: 'npi', name: 'Nepali', native: '\u0928\u0947\u092A\u093E\u0932\u0940', flag: '\u{1F1F3}\u{1F1F5}' },
+  { code: 'nya', name: 'Chichewa', native: 'Chichewa', flag: '\u{1F1F2}\u{1F1FC}' },
+  { code: 'ory', name: 'Odia', native: '\u0B13\u0B21\u0B3C\u0B3F\u0B06', flag: '\u{1F1EE}\u{1F1F3}' },
+  { code: 'pan', name: 'Punjabi', native: '\u0A2A\u0A70\u0A1C\u0A3E\u0A2C\u0A40', flag: '\u{1F1EE}\u{1F1F3}' },
+  { code: 'pbt', name: 'Pashto', native: '\u067E\u069A\u062A\u0648', flag: '\u{1F1E6}\u{1F1EB}' },
+  { code: 'pes', name: 'Persian', native: '\u0641\u0627\u0631\u0633\u06CC', flag: '\u{1F1EE}\u{1F1F7}' },
+  { code: 'pol', name: 'Polish', native: 'Polski', flag: '\u{1F1F5}\u{1F1F1}' },
+  { code: 'ron', name: 'Romanian', native: 'Rom\u00E2n\u0103', flag: '\u{1F1F7}\u{1F1F4}' },
+  { code: 'sat', name: 'Santali', native: '\u1C65\u1C5F\u1C71\u1C5B\u1C5F\u1C62\u1C60', flag: '\u{1F1EE}\u{1F1F3}' },
+  { code: 'slk', name: 'Slovak', native: 'Sloven\u010Dina', flag: '\u{1F1F8}\u{1F1F0}' },
+  { code: 'slv', name: 'Slovenian', native: 'Sloven\u0161\u010Dina', flag: '\u{1F1F8}\u{1F1EE}' },
+  { code: 'sna', name: 'Shona', native: 'ChiShona', flag: '\u{1F1FF}\u{1F1FC}' },
+  { code: 'snd', name: 'Sindhi', native: '\u0633\u0646\u068C\u064A', flag: '\u{1F1F5}\u{1F1F0}' },
+  { code: 'som', name: 'Somali', native: 'Soomaali', flag: '\u{1F1F8}\u{1F1F4}' },
+  { code: 'srp', name: 'Serbian', native: '\u0421\u0440\u043F\u0441\u043A\u0438', flag: '\u{1F1F7}\u{1F1F8}' },
+  { code: 'swe', name: 'Swedish', native: 'Svenska', flag: '\u{1F1F8}\u{1F1EA}' },
+  { code: 'swh', name: 'Swahili', native: 'Kiswahili', flag: '\u{1F1F0}\u{1F1EA}' },
+  { code: 'tam', name: 'Tamil', native: '\u0BA4\u0BAE\u0BBF\u0BB4\u0BCD', flag: '\u{1F1EE}\u{1F1F3}' },
+  { code: 'tel', name: 'Telugu', native: '\u0C24\u0C46\u0C32\u0C41\u0C17\u0C41', flag: '\u{1F1EE}\u{1F1F3}' },
+  { code: 'tgk', name: 'Tajik', native: '\u0422\u043E\u04B7\u0438\u043A\u04E3', flag: '\u{1F1F9}\u{1F1EF}' },
+  { code: 'tgl', name: 'Tagalog', native: 'Tagalog', flag: '\u{1F1F5}\u{1F1ED}' },
+  { code: 'tha', name: 'Thai', native: '\u0E44\u0E17\u0E22', flag: '\u{1F1F9}\u{1F1ED}' },
+  { code: 'tur', name: 'Turkish', native: 'T\u00FCrk\u00E7e', flag: '\u{1F1F9}\u{1F1F7}' },
+  { code: 'ukr', name: 'Ukrainian', native: '\u0423\u043A\u0440\u0430\u0457\u043D\u0441\u044C\u043A\u0430', flag: '\u{1F1FA}\u{1F1E6}' },
+  { code: 'urd', name: 'Urdu', native: '\u0627\u0631\u062F\u0648', flag: '\u{1F1F5}\u{1F1F0}' },
+  { code: 'uzn', name: 'Uzbek', native: 'O\u2018zbek', flag: '\u{1F1FA}\u{1F1FF}' },
+  { code: 'vie', name: 'Vietnamese', native: 'Ti\u1EBFng Vi\u1EC7t', flag: '\u{1F1FB}\u{1F1F3}' },
+  { code: 'xho', name: 'Xhosa', native: 'isiXhosa', flag: '\u{1F1FF}\u{1F1E6}' },
+  { code: 'yor', name: 'Yoruba', native: 'Yor\u00F9b\u00E1', flag: '\u{1F1F3}\u{1F1EC}' },
+  { code: 'yue', name: 'Cantonese', native: '\u7CB5\u8A9E', flag: '\u{1F1ED}\u{1F1F0}' },
+  { code: 'zlm', name: 'Malay', native: 'Bahasa Melayu', flag: '\u{1F1F2}\u{1F1FE}' },
+  { code: 'zul', name: 'Zulu', native: 'isiZulu', flag: '\u{1F1FF}\u{1F1E6}' },
+];
+// Sort: common first, then alphabetical by English name
+const SORTED_LANGUAGES = [
+  ...ALL_LANGUAGES.filter(l => COMMON_LANG_CODES.includes(l.code)),
+  ...ALL_LANGUAGES.filter(l => !COMMON_LANG_CODES.includes(l.code)).sort((a, b) => a.name.localeCompare(b.name)),
 ];
 
 const MODEL_PRESETS = [
@@ -59,14 +153,77 @@ const MODEL_PRESETS = [
   { id: 'facebook/hf-seamless-m4t-medium', label: 'Seamless M4T Medium', size: '~4 GB', langs: '100+' },
 ];
 
-const SOURCE_LANGS = [
-  { code: 'eng', name: 'English' },
-  { code: 'spa', name: 'Spanish' },
-  { code: 'fra', name: 'French' },
-  { code: 'deu', name: 'German' },
-  { code: 'cmn', name: 'Chinese (Mandarin)' },
-  { code: 'jpn', name: 'Japanese' },
-];
+// Searchable language dropdown component
+function LangDropdown({ value, onChange, label, exclude, disabled }: {
+  value: string; onChange: (code: string) => void; label: string; exclude?: string; disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handler = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', handler); return () => document.removeEventListener('mousedown', handler);
+  }, []);
+  const selected = ALL_LANGUAGES.find(l => l.code === value);
+  const filtered = SORTED_LANGUAGES.filter(l => {
+    if (l.code === exclude) return false;
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return l.name.toLowerCase().includes(q) || l.native.toLowerCase().includes(q) || l.code.toLowerCase().includes(q);
+  });
+  const commonFiltered = filtered.filter(l => COMMON_LANG_CODES.includes(l.code));
+  const otherFiltered = filtered.filter(l => !COMMON_LANG_CODES.includes(l.code));
+  return (
+    <div ref={ref} className="relative">
+      <button disabled={disabled} onClick={() => setOpen(!open)}
+        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-neutral-800/60 text-neutral-200 transition-all hover:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed border border-neutral-700 min-w-0">
+        <span className="text-[10px] text-neutral-500 uppercase mr-0.5">{label}</span>
+        <span>{selected?.flag}</span>
+        <span className="truncate max-w-[80px]">{selected?.name || value}</span>
+        <ChevronDown className={`w-3 h-3 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute top-full mt-1 w-64 bg-neutral-900 border border-neutral-700 rounded-xl shadow-xl z-50 overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-neutral-800">
+            <Search className="w-3.5 h-3.5 text-neutral-500" />
+            <input autoFocus type="text" value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Search languages..." className="bg-transparent text-sm text-neutral-200 placeholder-neutral-500 outline-none flex-1" />
+          </div>
+          <div className="max-h-60 overflow-y-auto">
+            {commonFiltered.length > 0 && (
+              <>
+                <div className="px-3 py-1 text-[10px] uppercase text-neutral-600 tracking-wider">Common</div>
+                {commonFiltered.map(lang => (
+                  <button key={lang.code} onClick={() => { onChange(lang.code); setOpen(false); setSearch(''); }}
+                    className={`w-full flex items-center gap-2 px-3 py-1.5 text-sm transition-colors ${value === lang.code ? 'bg-[#3DA480]/20 text-white' : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200'}`}>
+                    <span>{lang.flag}</span>
+                    <span>{lang.name}</span>
+                    <span className="text-neutral-600 text-xs ml-auto">{lang.native !== lang.name ? lang.native : ''}</span>
+                  </button>
+                ))}
+              </>
+            )}
+            {otherFiltered.length > 0 && (
+              <>
+                {commonFiltered.length > 0 && <div className="border-t border-neutral-800 my-1" />}
+                <div className="px-3 py-1 text-[10px] uppercase text-neutral-600 tracking-wider">All Languages</div>
+                {otherFiltered.map(lang => (
+                  <button key={lang.code} onClick={() => { onChange(lang.code); setOpen(false); setSearch(''); }}
+                    className={`w-full flex items-center gap-2 px-3 py-1.5 text-sm transition-colors ${value === lang.code ? 'bg-[#3DA480]/20 text-white' : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200'}`}>
+                    <span>{lang.flag}</span>
+                    <span>{lang.name}</span>
+                    <span className="text-neutral-600 text-xs ml-auto">{lang.native !== lang.name ? lang.native : ''}</span>
+                  </button>
+                ))}
+              </>
+            )}
+            {filtered.length === 0 && <div className="px-3 py-4 text-center text-sm text-neutral-500">No languages found</div>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface AppSettings {
   geminiApiKey: string;
@@ -75,6 +232,7 @@ interface AppSettings {
   chunkDurationS: number;
   vadThreshold: number;
   srcLang: string;
+  tgtLang: string;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -84,6 +242,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   chunkDurationS: 3.0,
   vadThreshold: 0.01,
   srcLang: 'eng',
+  tgtLang: 'spa',
 };
 
 function loadSettings(): AppSettings {
@@ -115,14 +274,15 @@ export default function App() {
   const [inputSubtitles, setInputSubtitles] = useState('');
   const [outputSubtitles, setOutputSubtitles] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [selectedLang, setSelectedLang] = useState(LANGUAGE_PAIRS[0]);
-  const [showLangDropdown, setShowLangDropdown] = useState(false);
+  const srcLangObj = ALL_LANGUAGES.find(l => l.code === settings.srcLang) || ALL_LANGUAGES[0];
+  const tgtLangObj = ALL_LANGUAGES.find(l => l.code === settings.tgtLang) || ALL_LANGUAGES[1];
   const [backendMode, setBackendMode] = useState<'gemini' | 'local'>('gemini');
   const [localServerStatus, setLocalServerStatus] = useState<'unknown' | 'online' | 'offline'>('unknown');
   const [showSettings, setShowSettings] = useState(false);
   const [settings, setSettings] = useState<AppSettings>(loadSettings);
   const [showApiKey, setShowApiKey] = useState(false);
   const [customModelId, setCustomModelId] = useState('');
+  const [darkMode, setDarkMode] = useState(true);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -183,7 +343,7 @@ export default function App() {
         setIsConnected(true);
         ws.send(JSON.stringify({
           src_lang: settings.srcLang,
-          target_lang: selectedLang.seamlessCode,
+          target_lang: settings.tgtLang,
           model_name: settings.localModelName,
           chunk_duration_s: settings.chunkDurationS,
           vad_threshold: settings.vadThreshold,
@@ -405,7 +565,7 @@ export default function App() {
           speechConfig: {
             voiceConfig: { prebuiltVoiceConfig: { voiceName: "Zephyr" } },
           },
-          systemInstruction: `You are a real-time translator. Translate ${selectedLang.name} to English, and English to ${selectedLang.name}. When you hear ${selectedLang.name}, speak the English translation. When you hear English, speak the ${selectedLang.name} translation. Be highly accurate and offer real-time updates. If you see video, you can use it for context but your primary job is translation.`,
+          systemInstruction: `You are a real-time translator. Listen continuously and translate as you hear speech - do not wait for pauses. Translate ${srcLangObj.name} to ${tgtLangObj.name}, and ${tgtLangObj.name} to ${srcLangObj.name}. When you hear ${srcLangObj.name}, speak the ${tgtLangObj.name} translation immediately. When you hear ${tgtLangObj.name}, speak the ${srcLangObj.name} translation immediately. Translate in small chunks as speech arrives - prioritize low latency over perfect sentences. If you see video, use it for context but your primary job is translation.`,
           outputAudioTranscription: {},
           inputAudioTranscription: {},
         },
@@ -461,9 +621,9 @@ export default function App() {
   const isPresetModel = MODEL_PRESETS.some(p => p.id === settings.localModelName);
 
   return (
-    <div className="relative min-h-screen bg-neutral-950 text-neutral-50 flex flex-col font-sans">
+    <div className={`relative min-h-screen flex flex-col font-sans transition-colors ${darkMode ? 'bg-neutral-950 text-neutral-50' : 'bg-neutral-100 text-neutral-900'}`}>
       <ScrollingCodeBackground />
-      <header className="px-4 md:px-6 py-3 border-b border-neutral-800 flex items-center justify-between bg-neutral-900/50 backdrop-blur-sm sticky top-0 z-10 gap-3 flex-wrap">
+      <header className={`px-4 md:px-6 py-3 border-b flex items-center justify-between backdrop-blur-sm sticky top-0 z-10 gap-3 flex-wrap ${darkMode ? 'border-neutral-800 bg-neutral-900/50' : 'border-neutral-300 bg-white/80'}`}>
         <div className="flex items-center gap-3">
           <div className="bg-[#3DA480]/20 p-2 rounded-lg">
             <Globe2 className="w-5 h-5 text-[#3DA480]" />
@@ -477,7 +637,15 @@ export default function App() {
             className={`p-1.5 rounded-lg transition-colors ${showSettings ? 'bg-[#3DA480]/20 text-[#3DA480]' : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'}`}
             title="Settings"
           >
-            <Settings2 className="w-4.5 h-4.5" />
+            <Cog className="w-4.5 h-4.5" />
+          </button>
+          {/* Dark/Light Mode */}
+          <button
+            onClick={() => setDarkMode(!darkMode)}
+            className="p-1.5 rounded-lg transition-colors text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800"
+            title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {darkMode ? <Sun className="w-4.5 h-4.5" /> : <Moon className="w-4.5 h-4.5" />}
           </button>
 
           {/* Backend Toggle */}
@@ -511,40 +679,15 @@ export default function App() {
             </button>
           </div>
 
-          {/* Language Selector */}
-          <div className="relative">
-            <button
-              onClick={() => setShowLangDropdown(!showLangDropdown)}
-              disabled={isConnected}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-neutral-800/60 text-neutral-200 transition-all hover:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed border border-neutral-700"
-            >
-              <Languages className="w-3.5 h-3.5 text-[#3DA480]" />
-              <span>EN &harr; {selectedLang.flag} {selectedLang.name}</span>
-              <ChevronDown className={`w-3 h-3 transition-transform ${showLangDropdown ? 'rotate-180' : ''}`} />
+          {/* Language Selectors */}
+          <div className="flex items-center gap-1.5">
+            <Languages className="w-3.5 h-3.5 text-[#3DA480] shrink-0" />
+            <LangDropdown label="From" value={settings.srcLang} onChange={(code) => updateSettings({ srcLang: code })} exclude={settings.tgtLang} disabled={isConnected} />
+            <button onClick={() => { if (!isConnected) updateSettings({ srcLang: settings.tgtLang, tgtLang: settings.srcLang }); }}
+              disabled={isConnected} className="text-neutral-500 hover:text-[#3DA480] transition-colors disabled:opacity-50 px-0.5" title="Swap languages">
+              &harr;
             </button>
-            {showLangDropdown && !isConnected && (
-              <div className="absolute right-0 top-full mt-2 w-56 max-w-[calc(100vw-2rem)] bg-neutral-900 border border-neutral-700 rounded-xl shadow-2xl shadow-black/40 overflow-hidden z-30">
-                <div className="p-1.5 max-h-80 overflow-y-auto">
-                  {LANGUAGE_PAIRS.map((lang) => (
-                    <button
-                      key={lang.code}
-                      onClick={() => { setSelectedLang(lang); setShowLangDropdown(false); }}
-                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
-                        selectedLang.code === lang.code
-                          ? 'bg-[#3DA480]/20 text-white'
-                          : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200'
-                      }`}
-                    >
-                      <span className="text-base">{lang.flag}</span>
-                      <span>English &harr; {lang.name}</span>
-                      {selectedLang.code === lang.code && (
-                        <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[#3DA480]" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+            <LangDropdown label="To" value={settings.tgtLang} onChange={(code) => updateSettings({ tgtLang: code })} exclude={settings.srcLang} disabled={isConnected} />
           </div>
 
           {/* Status */}
@@ -686,20 +829,6 @@ export default function App() {
                   <span>0.001 (sensitive)</span>
                   <span>0.1 (ignore noise)</span>
                 </div>
-              </section>
-
-              {/* Source Language */}
-              <section>
-                <h3 className="text-sm font-semibold text-neutral-300 uppercase tracking-wider mb-3">Source Language</h3>
-                <select
-                  value={settings.srcLang}
-                  onChange={(e) => updateSettings({ srcLang: e.target.value })}
-                  className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-200 focus:outline-none focus:border-[#3DA480]"
-                >
-                  {SOURCE_LANGS.map(l => (
-                    <option key={l.code} value={l.code}>{l.name}</option>
-                  ))}
-                </select>
               </section>
 
               {/* Reset */}
