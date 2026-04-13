@@ -702,19 +702,18 @@ export default function App() {
         </div>
       </header>
 
-      {/* Settings Panel */}
+      <div className="flex-1 flex gap-4 p-4 md:p-6 max-w-7xl mx-auto w-full min-h-0">
+      {/* Settings Panel - inline to the right of main content */}
       {showSettings && (
-        <div className="fixed inset-0 z-50 flex justify-end" onClick={(e) => { if (e.target === e.currentTarget) setShowSettings(false); }}>
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-          <div className="relative w-full max-w-md bg-neutral-900 border-l border-neutral-800 shadow-2xl overflow-y-auto">
-            <div className="sticky top-0 bg-neutral-900/95 backdrop-blur-sm border-b border-neutral-800 px-6 py-4 flex items-center justify-between z-10">
-              <h2 className="text-lg font-semibold">Settings</h2>
-              <button onClick={() => setShowSettings(false)} className="p-1.5 rounded-lg hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 transition-colors">
-                <X className="w-5 h-5" />
+          <div className="order-2 w-80 shrink-0 bg-neutral-900 border border-neutral-800 rounded-2xl shadow-2xl overflow-y-auto flex flex-col">
+            <div className="sticky top-0 bg-neutral-900/95 backdrop-blur-sm border-b border-neutral-800 px-4 py-3 flex items-center justify-between z-10 rounded-t-2xl">
+              <h2 className="text-base font-semibold">Settings</h2>
+              <button onClick={() => setShowSettings(false)} className="p-1 rounded-lg hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200 transition-colors">
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="p-6 space-y-8">
+            <div className="p-4 space-y-6 text-sm">
               {/* Cloud Backend */}
               <section>
                 <h3 className="text-sm font-semibold text-neutral-300 uppercase tracking-wider mb-3 flex items-center gap-2">
@@ -862,10 +861,9 @@ export default function App() {
               </section>
             </div>
           </div>
-        </div>
       )}
 
-      <main className="flex-1 p-4 md:p-6 max-w-7xl mx-auto w-full flex flex-col gap-6">
+        <main className="order-1 flex-1 flex flex-col gap-6 min-w-0">
         <div className="relative flex-1 bg-neutral-900 rounded-2xl overflow-hidden border border-neutral-800 shadow-2xl flex flex-col min-h-[400px]">
           <div className="flex-1 relative bg-black flex items-center justify-center">
             <video
@@ -975,6 +973,7 @@ export default function App() {
           </div>
         </div>
       </main>
+      </div>
     </div>
   );
 }
