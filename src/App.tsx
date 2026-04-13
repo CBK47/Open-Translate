@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
-import { Mic, MicOff, Video, VideoOff, MonitorUp, MonitorOff, Globe2, Play, Square, ChevronDown, Cloud, Server, Languages, Settings2, X, Eye, EyeOff, Search, Sun, Moon } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, MonitorUp, MonitorOff, Globe2, Play, Square, ChevronDown, Cloud, Server, Languages, Settings2, X, Eye, EyeOff, Search, Sun, Moon, Cog } from 'lucide-react';
 
 // ── Scrolling code background ────────────────────────────────────────────────
 const SCROLL_SNIPPETS = [
@@ -641,7 +641,7 @@ export default function App() {
             className={`p-1.5 rounded-lg transition-colors ${showSettings ? 'bg-[#3DA480]/20 text-[#3DA480]' : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'}`}
             title="Settings"
           >
-            <Settings2 className="w-4.5 h-4.5" />
+            <Cog className="w-4.5 h-4.5" />
           </button>
           {/* Dark/Light Mode */}
           <button
