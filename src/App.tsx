@@ -283,6 +283,10 @@ export default function App() {
   const [showApiKey, setShowApiKey] = useState(false);
   const [customModelId, setCustomModelId] = useState('');
   const [darkMode, setDarkMode] = useState(true);
+  const [showBackground, setShowBackground] = useState(() => {
+    try { return localStorage.getItem('tg-show-bg') !== 'false'; } catch { return true; }
+  });
+  useEffect(() => { localStorage.setItem('tg-show-bg', String(showBackground)); }, [showBackground]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -622,7 +626,7 @@ export default function App() {
 
   return (
     <div className={`relative min-h-screen flex flex-col font-sans transition-colors ${darkMode ? 'bg-neutral-950 text-neutral-50' : 'bg-neutral-100 text-neutral-900'}`}>
-      <ScrollingCodeBackground />
+      {showBackground && <ScrollingCodeBackground />}
       <header className={`px-4 md:px-6 py-3 border-b flex items-center justify-between backdrop-blur-sm sticky top-0 z-10 gap-3 flex-wrap ${darkMode ? 'border-neutral-800 bg-neutral-900/50' : 'border-neutral-300 bg-white/80'}`}>
         <div className="flex items-center gap-3">
           <div className="bg-[#3DA480]/20 p-2 rounded-lg">
@@ -829,6 +833,18 @@ export default function App() {
                   <span>0.001 (sensitive)</span>
                   <span>0.1 (ignore noise)</span>
                 </div>
+              </section>
+
+              {/* Display */}
+              <section>
+                <h3 className="text-sm font-semibold text-neutral-300 uppercase tracking-wider mb-3">Display</h3>
+                <label className="flex items-center justify-between cursor-pointer">
+                  <span className="text-sm text-neutral-300">Scrolling background effect</span>
+                  <button onClick={() => setShowBackground(!showBackground)}
+                    className={`w-10 h-5 rounded-full transition-colors relative ${showBackground ? 'bg-[#3DA480]' : 'bg-neutral-700'}`}>
+                    <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${showBackground ? 'left-5' : 'left-0.5'}`} />
+                  </button>
+                </label>
               </section>
 
               {/* Reset */}
