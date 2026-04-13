@@ -972,6 +972,12 @@ export default function App() {
         </div>
       </main>
       </div>
+      <footer className="text-center py-8 border-t border-white/[0.08]" style={{ fontFamily: 'monospace', fontSize: '0.65rem', letterSpacing: '0.05em', color: '#64748B' }}>
+        Developed by{' '}
+        <a href="https://www.linkedin.com/in/cbksl/" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: '#94A3B8' }}>Connor Bridgeland-Knowles</a>
+        {' \u00B7 '}
+        <a href="https://cbksolutions.co.uk" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: '#3DA480' }}>CBK Solutions</a>
+      </footer>
     </div>
   );
 }
